@@ -1,153 +1,281 @@
-
-/*
-import { useState } from "react";
+import React, { useState } from "react";
+import styled from "styled-components";
+import { Link, useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../firebase";
-// import axios from "axios";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
-function Login() {
+// Font Awesome imports
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+
+export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // const handleEmailLogin = (e) => {
+  //   e.preventDefault();
+  //   if (!email || !password) {
+  //     alert("Please enter email and password");
+  //     return;
+  //   }
+  const handleEmailLogin = async (e) => {
+  e.preventDefault();
+  if (!email || !password) {
+    alert("Please enter email and password");
+    return;
+  }
+  setIsLoading(true);
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userEmail = userCredential.user.email;
+    const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
+    localStorage.setItem("role", role);
+    alert(`✅ Logged in as ${role}`);
+    navigate(role === "admin" ? "/admin" : "/guest");
+  } catch (error) {
+    console.error("Firebase login error:", error.code, error.message); // <-- Add this line here
+    alert("❌ Invalid email or password");
+  } finally {
+    setIsLoading(false);
+  }
+};
+  //   const role = email.endsWith("@admin.com") ? "admin" : "guest";
+  //   localStorage.setItem("role", role);
+  //   alert(`✅ Logged in as ${role}`);
+  //   navigate(role === "admin" ? "/admin" : "/guest");
+  // };
 
   const handleGoogleLogin = async () => {
-    if (isLoading) return; // Prevent multiple clicks
-
+    if (isLoading) return;
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
-
-      // await axios.post("http://localhost:5000/api/auth/verify", { token });
-
+      const userEmail = result.user.email;
+      const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
+      localStorage.setItem("role", role);
       localStorage.setItem("token", token);
-      alert("✅ Logged in successfully!");
-      window.location.href = "/";
+      alert(`✅ Logged in as ${role}`);
+      navigate(role === "admin" ? "/admin" : "/guest");
     } catch (err) {
       console.error(err);
-      alert("❌ Login failed. Check popup blocker or backend status.");
+      alert("❌ Google login failed");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDummyLogin = () => {
-    alert(`Trial login with email: ${email}, password: ${password}`);
-  };
-
   return (
-    <div className="p-4 max-w-md mx-auto bg-white shadow-lg rounded-lg mt-20">
-      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
+    <StyledWrapper>
+      <div className="form-container">
+        <p className="title">Login</p>
 
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full p-2 border border-gray-300 rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+        <form className="form" onSubmit={handleEmailLogin}>
+          {/* Email */}
+          <div className="input-group">
+            <label htmlFor="username">Email</label>
+        
+            <input
+              type="email"
+              name="username"
+              id="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email"
+            />
+          </div>
 
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full p-2 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+          {/* Password */}
+          <div className="input-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              name="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+            />
+            <div className="forgot">
+              <a rel="noopener noreferrer" href="#">
+                Forgot Password?
+              </a>
+            </div>
+          </div>
 
-      <button
-        onClick={handleDummyLogin}
-        className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 rounded mb-3 transition duration-200"
-      >
-        Login (Trial)
-      </button>
+          {/* Email Login Button */}
+          <button type="submit" className="sign">
+            Sign in
+          </button>
+        </form>
 
-      <button
-        onClick={handleGoogleLogin}
-        disabled={isLoading}
-        className={`w-full ${
-          isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-        } text-white py-2 rounded transition duration-200`}
-      >
-        {isLoading ? "Signing in..." : "Sign in with Google"}
-      </button>
-    </div>
+        {/* Divider */}
+        <div className="social-message">
+          <div className="line" />
+          <p className="message">Login with social accounts</p>
+          <div className="line" />
+        </div>
+
+        {/* Google Login */}
+        <div className="social-icons">
+          <button
+            aria-label="Log in with Google"
+            className="icon"
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              "Loading..."
+            ) : (
+              <FontAwesomeIcon icon={faGoogle} size="lg" />
+            )}
+          </button>
+        </div>
+
+        {/* Sign up */}
+        <p className="signup">
+          Don't have an account?{" "}
+          <Link to="/signup" className="link">
+            Sign up
+          </Link>
+        </p>
+      </div>
+    </StyledWrapper>
   );
 }
 
-export default Login;
-*/
+const StyledWrapper = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom right, #0f0c29, #302b63, #24243e);
 
-import { Link } from 'react-router-dom';
-import { FaUser, FaLock } from 'react-icons/fa';
-import { FcGoogle } from 'react-icons/fc';
-import { FaTwitter } from 'react-icons/fa';
+  .form-container {
+    width: 320px;
+    border-radius: 0.75rem;
+    background-color: rgba(17, 24, 39, 1);
+    padding: 2rem;
+    color: rgba(243, 244, 246, 1);
+  }
 
-const Login = () => {
-  return (
-    <div className="min-h-screen bg-[#0f0c29] flex items-center justify-center px-4">
-      <div className="bg-[#19113d] text-white p-8 rounded-2xl shadow-xl w-full max-w-md mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-6">Log in</h2>
+  .title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
 
-        {/* Email */}
-        <div className="mb-4 flex items-center border border-gray-300 rounded-lg px-3 py-2 bg-white text-black">
-          <FaUser className="mr-2 text-gray-600" />
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full bg-transparent outline-none"
-          />
-        </div>
+  .form {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
 
-        {/* Password */}
-        <div className="mb-4 flex items-center border border-gray-300 rounded-lg px-3 py-2 bg-white text-black">
-          <FaLock className="mr-2 text-gray-600" />
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full bg-transparent outline-none"
-          />
-        </div>
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+  }
 
-        {/* Remember Me & Forgot Password */}
-        <div className="flex items-center justify-between text-sm mb-4">
-          <label className="flex items-center">
-            <input type="checkbox" className="mr-2" />
-            Remember me
-          </label>
-          <Link to="#" className="text-purple-400 hover:underline">Forgot password?</Link>
-        </div>
+  .input-group label {
+    color: rgba(156, 163, 175, 1);
+    margin-bottom: 4px;
+    font-size: 0.875rem;
+    position: absolute;
+    left: 363px;
+    margin-top: -19px;
+    margin-left: 226px;
+  }
 
-        {/* Login Button */}
-        <button className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-semibold">
-          Log in
-        </button>
+  .input-group input {
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(55, 65, 81, 1);
+    background-color: rgba(17, 24, 39, 1);
+    padding: 0.75rem 1rem;  
+    color: rgba(243, 244, 246, 1);
+    outline: none;
+    position:relative;
+    left:-16px;
+    text-align: left;
+    margin-bottom: 14px;
+  }
 
-        {/* Signup */}
-        <p className="mt-4 text-center text-sm">
-          Don’t have an account?{' '}
-          <Link to="/signup" className="text-blue-400 hover:underline">Sign up</Link>
-        </p>
+  .input-group input:focus {
+    border-color: rgba(167, 139, 250);
+  }
 
-        {/* Divider */}
-        <div className="flex items-center justify-center my-4">
-          <span className="border-b border-white w-1/4"></span>
-          <span className="mx-2 text-sm">Or login with</span>
-          <span className="border-b border-white w-1/4"></span>
-        </div>
+  .forgot {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    width: 100%;
+  }
 
-        {/* Social */}
-        <div className="flex justify-center space-x-4 text-2xl">
-          <FaTwitter className="cursor-pointer" />
-          <FcGoogle className="cursor-pointer" />
-        </div>
-      </div>
-    </div>
-  );
-};
+  .sign {
+    background-color: rgba(167, 139, 250, 1);
+    padding: 0.75rem;
+    text-align: center;
+    color: rgba(17, 24, 39, 1);
+    border: none;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
 
-export default Login;
+  .social-message {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    gap: 0.5rem;
+  }
 
+  .line {
+    flex: 1;
+    height: 1px;
+    background-color: rgba(55, 65, 81, 1);
+  }
 
+  .message {
+    font-size: 0.875rem;
+    color: rgba(156, 163, 175, 1);
+    text-align: center;
+  }
 
+  .social-icons {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
 
+  .icon {
+    background: white;
+    border-radius: 50%; /* make it round */
+    padding: 0.75rem;
+    cursor: pointer;
+    border: none;
+    font-size: 1.25rem;
+    color: #000000; /* Google blue */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .signup {
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(156, 163, 175, 1);
+  }
+
+  .link {
+    color: rgba(167, 139, 250, 1);
+    text-decoration: none;
+  }
+`;
