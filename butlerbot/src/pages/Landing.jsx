@@ -127,13 +127,15 @@ const Landing = () => {
 export default Landing;
 
 */
+
+/*
 import { Link } from 'react-router-dom';
 
 const Landing = () => {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white font-sans">
 
-      {/* ✅ Navbar */}
+     
       <header className="w-full flex flex-col md:flex-row justify-between items-center px-8 py-5">
         <h1 className="text-2xl font-bold text-white tracking-wide mb-3 md:mb-0">BUTLER BOT</h1>
         <Link to="/login">
@@ -143,7 +145,7 @@ const Landing = () => {
         </Link>
       </header>
 
-      {/* ✅ Hero Section */}
+    
       <section className="flex flex-col-reverse md:flex-row items-center justify-between px-8 md:px-20 py-16">
         <div className="md:w-1/2 text-center md:text-left space-y-6">
           <h2 className="text-5xl font-extrabold leading-tight tracking-wide">
@@ -162,7 +164,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ✅ Features Section */}
+     
       <section id="features" className="bg-[#2c2c4e] text-white px-8 md:px-20 py-16">
         <h3 className="text-3xl font-bold mb-12 text-center">Features</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
@@ -184,7 +186,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ✅ Contact Section */}
+      
       <section id="contact" className="bg-[#24243e] text-white px-8 md:px-20 py-16 text-center">
         <h3 className="text-3xl font-bold mb-6">Get in Touch</h3>
         <p className="text-lg text-white max-w-xl mx-auto">
@@ -196,7 +198,50 @@ const Landing = () => {
 };
 
 export default Landing;
+*/
+import { Link } from "react-router-dom";
 
+const Landing = () => {
+  return (
+    <div className="min-h-screen w-full bg-[#0A0A60] text-white font-sans">
+      
+      {/* Navbar */}
+      <header className="w-full flex justify-between items-center px-8 py-5">
+        <h1 className="text-2xl font-bold tracking-wide">BUTLER BOT</h1>
+        <Link to="/login">
+          <button className="bg-purple-700 text-white px-8 py-3 text-lg rounded-full font-semibold shadow-lg hover:bg-purple-800 hover:scale-105 transition-all duration-200">
+            Login
+          </button>
+        </Link>
+      </header>
 
+      {/* Hero Section */}
+      <section className="flex flex-col md:flex-row items-center justify-between px-8 md:px-20 py-16 gap-10">
+        
+        {/* Left side - text */}
+        <div className="md:w-1/2 text-center md:text-left space-y-6">
+          <h2 className="text-5xl font-extrabold leading-tight tracking-wide">
+            Meet <span className="text-purple-400">ButlerBot 🤖</span>
+          </h2>
+          <p className="text-lg max-w-md mx-auto md:mx-0">
+            Delivering comfort, cleanliness, and concierge service — all in one
+            smart hotel assistant.
+          </p>
+        </div>
 
+        {/* Right side - image */}
+        <div className="md:w-1/2 flex justify-center">
+          <img
+            src="/butler-rocket.png"
+            alt="Hotel Bot"
+            className="w-[300px] md:w-[400px] drop-shadow-2xl"
+          />
+        </div>
 
+      </section>
+    </div>
+  );
+};
+
+export default Landing;
+  

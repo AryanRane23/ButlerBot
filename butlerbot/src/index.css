@@ -3,19 +3,22 @@
 @tailwind utilities;
 
 :root {
+  --main-color: #4F46E5; /* Indigo (main accent color) */
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: white; /* ✅ Add this to ensure white font globally */
-  background-color: #0f0c29; /* Optional: set default bg */
+  color: rgb(246, 239, 239);
+  background-color: #0e0000; /* Dark gray background */
 }
 
 body {
   margin: 0;
- width: 100%;
+  width: 100%;
   box-sizing: border-box;
   min-width: 320px;
   min-height: 100vh;
-  background-color: transparent; /* ✅ Keep Tailwind styles */
+  background-color: #0d0651; /* Dark gray */
   color: inherit;
 }
+
+  
