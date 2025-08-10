@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { Link, useNavigate } from "react-router-dom";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
 import { auth, provider } from "../firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-
-// Font Awesome imports
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
@@ -15,38 +12,27 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // const handleEmailLogin = (e) => {
-  //   e.preventDefault();
-  //   if (!email || !password) {
-  //     alert("Please enter email and password");
-  //     return;
-  //   }
   const handleEmailLogin = async (e) => {
-  e.preventDefault();
-  if (!email || !password) {
-    alert("Please enter email and password");
-    return;
-  }
-  setIsLoading(true);
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const userEmail = userCredential.user.email;
-    const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
-    localStorage.setItem("role", role);
-    alert(`✅ Logged in as ${role}`);
-    navigate(role === "admin" ? "/admin" : "/guest");
-  } catch (error) {
-    console.error("Firebase login error:", error.code, error.message); // <-- Add this line here
-    alert("❌ Invalid email or password");
-  } finally {
-    setIsLoading(false);
-  }
-};
-  //   const role = email.endsWith("@admin.com") ? "admin" : "guest";
-  //   localStorage.setItem("role", role);
-  //   alert(`✅ Logged in as ${role}`);
-  //   navigate(role === "admin" ? "/admin" : "/guest");
-  // };
+    e.preventDefault();
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userEmail = userCredential.user.email;
+      const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
+      localStorage.setItem("role", role);
+      alert(`✅ Logged in as ${role}`);
+      navigate(role === "admin" ? "/admin" : "/guest");
+    } catch (error) {
+      console.error("Firebase login error:", error.code, error.message);
+      alert("❌ Invalid email or password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGoogleLogin = async () => {
     if (isLoading) return;
@@ -74,10 +60,8 @@ export default function LoginForm() {
         <p className="title">Login</p>
 
         <form className="form" onSubmit={handleEmailLogin}>
-          {/* Email */}
           <div className="input-group">
             <label htmlFor="username">Email</label>
-        
             <input
               type="email"
               name="username"
@@ -88,7 +72,6 @@ export default function LoginForm() {
             />
           </div>
 
-          {/* Password */}
           <div className="input-group">
             <label htmlFor="password">Password</label>
             <input
@@ -106,20 +89,17 @@ export default function LoginForm() {
             </div>
           </div>
 
-          {/* Email Login Button */}
           <button type="submit" className="sign">
             Sign in
           </button>
         </form>
 
-        {/* Divider */}
         <div className="social-message">
           <div className="line" />
           <p className="message">Login with social accounts</p>
           <div className="line" />
         </div>
 
-        {/* Google Login */}
         <div className="social-icons">
           <button
             aria-label="Log in with Google"
@@ -127,15 +107,10 @@ export default function LoginForm() {
             onClick={handleGoogleLogin}
             disabled={isLoading}
           >
-            {isLoading ? (
-              "Loading..."
-            ) : (
-              <FontAwesomeIcon icon={faGoogle} size="lg" />
-            )}
+            {isLoading ? "Loading..." : <FontAwesomeIcon icon={faGoogle} size="lg" />}
           </button>
         </div>
 
-        {/* Sign up */}
         <p className="signup">
           Don't have an account?{" "}
           <Link to="/signup" className="link">
@@ -152,20 +127,24 @@ const StyledWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(to bottom right, #0f0c29, #302b63, #24243e);
+
+  /* Match landing page gradient */
+  background: linear-gradient(90deg, #f1f3f6ff 0%, #f9a8d4 100%);
+  background-size: cover;
 
   .form-container {
     width: 320px;
     border-radius: 0.75rem;
-    background-color: rgba(17, 24, 39, 1);
+    background-color: rgba(247, 248, 249, 1);
     padding: 2rem;
-    color: rgba(243, 244, 246, 1);
+    color: white;
   }
 
   .title {
     text-align: center;
     font-size: 1.5rem;
     font-weight: 700;
+    color: black; /* ✅ Make it visible */
   }
 
   .form {
@@ -183,28 +162,23 @@ const StyledWrapper = styled.div`
   }
 
   .input-group label {
-    color: rgba(156, 163, 175, 1);
-    margin-bottom: 4px;
+    color: #3b3a3aff;
+    margin-bottom: 6px; /* more space between label and input */
     font-size: 0.875rem;
-    position: absolute;
-    left: 363px;
-    margin-top: -19px;
-    margin-left: 226px;
   }
 
   .input-group input {
     width: 100%;
     border-radius: 0.375rem;
-    border: 1px solid rgba(55, 65, 81, 1);
-    background-color: rgba(17, 24, 39, 1);
-    padding: 0.75rem 1rem;  
-    color: rgba(243, 244, 246, 1);
+    border: 1px solid rgba(2, 6, 17, 1);
+    background-color: rgba(200, 200, 241, 1);
+    padding: 0.85rem 0.2rem; /* more padding inside */
+    color: #111;
     outline: none;
-    position:relative;
-    left:-16px;
-    text-align: left;
-    margin-bottom: 14px;
   }
+.form-container {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
 
   .input-group input:focus {
     border-color: rgba(167, 139, 250);
@@ -219,10 +193,10 @@ const StyledWrapper = styled.div`
   }
 
   .sign {
-    background-color: rgba(167, 139, 250, 1);
+    background: rgba(99, 87, 137, 1);
     padding: 0.75rem;
     text-align: center;
-    color: rgba(17, 24, 39, 1);
+    color: white;
     border: none;
     border-radius: 0.375rem;
     font-weight: 600;
@@ -245,7 +219,7 @@ const StyledWrapper = styled.div`
 
   .message {
     font-size: 0.875rem;
-    color: rgba(156, 163, 175, 1);
+    color: rgba(36, 67, 120, 1);
     text-align: center;
   }
 
@@ -257,12 +231,12 @@ const StyledWrapper = styled.div`
 
   .icon {
     background: white;
-    border-radius: 50%; /* make it round */
+    border-radius: 50%;
     padding: 0.75rem;
     cursor: pointer;
     border: none;
     font-size: 1.25rem;
-    color: #000000; /* Google blue */
+    color: black;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -271,11 +245,22 @@ const StyledWrapper = styled.div`
   .signup {
     text-align: center;
     font-size: 0.75rem;
-    color: rgba(156, 163, 175, 1);
+    color: rgba(112, 15, 76, 1);
   }
 
   .link {
-    color: rgba(167, 139, 250, 1);
+    color: rgba(81, 7, 72, 1);
     text-decoration: none;
   }
+    .sign:hover {
+  background: rgba(81, 67, 137, 1);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+.icon:hover {
+  background: #f1f1f1;
+  transform: scale(1.1);
+}
+
 `;
