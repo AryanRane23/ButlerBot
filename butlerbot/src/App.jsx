@@ -1,43 +1,4 @@
-
-
-/*
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Landing from "./pages/Landing";
-import Login from "./controllers/Login";
-import Signup from "./controllers/Signup";
-import ProtectedRoute from "./controllers/ProtectedRoute";
-import Dashboard from "./pages/Dashboard";
-import GuestDash from "./pages/GuestDash";
-
-//import Dashboard from "./pages/Dashboard";
-
-
-
-function App() {
-  return (
-    
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Landing />} />
-        <Route path="/guest" element={<GuestDash />} />
-         <Route path="/admin" element={<Dashboard/>} />
-        <Route
-          path="/" // redirected page after login
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
-*/
-
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./controllers/Login";
@@ -45,8 +6,19 @@ import Signup from "./controllers/Sign";
 import ProtectedRoute from "./controllers/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import GuestDash from "./pages/GuestDash";
+import { auth } from "./firebase"; // Make sure this import exists
 
 function App() {
+  useEffect(() => {
+    const handleUnload = () => {
+      auth.signOut();
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -54,7 +26,6 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/guest" element={<GuestDash />} />
 
         {/* Protected routes */}
         <Route
@@ -62,6 +33,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/guest"
+          element={
+            <ProtectedRoute>
+              <GuestDash/>
             </ProtectedRoute>
           }
         />

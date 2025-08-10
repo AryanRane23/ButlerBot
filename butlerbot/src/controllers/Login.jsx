@@ -24,6 +24,9 @@ export default function LoginForm() {
       const userEmail = userCredential.user.email;
       const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
       localStorage.setItem("role", role);
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem("token", token);
+
       alert(`✅ Logged in as ${role}`);
       navigate(role === "admin" ? "/admin" : "/guest");
     } catch (error) {
