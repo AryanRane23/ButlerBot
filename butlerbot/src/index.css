@@ -7,7 +7,7 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: rgb(246, 239, 239);
+  color: rgb(8, 1, 1);
   background-color: #0e0000; /* Dark gray background */
 }
 
@@ -17,8 +17,9 @@ body {
   box-sizing: border-box;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #0d0651; /* Dark gray */
+   /* background-color: hsl(240, 9%, 94%); /* Dark gray */
+  background: linear-gradient(to right, #e4e6ea, #f480d3); /* blue → purple → pink */
   color: inherit;
 }
-
+c
   

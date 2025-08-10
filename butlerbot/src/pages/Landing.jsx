@@ -200,48 +200,38 @@ const Landing = () => {
 export default Landing;
 */
 import { Link } from "react-router-dom";
-
+import Button from "./Button"; // adjust the path if needed
 const Landing = () => {
   return (
-    <div className="min-h-screen w-full bg-[#0A0A60] text-white font-sans">
-      
-      {/* Navbar */}
-      <header className="w-full flex justify-between items-center px-8 py-5">
-        <h1 className="text-2xl font-bold tracking-wide">BUTLER BOT</h1>
-        <Link to="/login">
-          <button className="bg-purple-700 text-white px-8 py-3 text-lg rounded-full font-semibold shadow-lg hover:bg-purple-800 hover:scale-105 transition-all duration-200">
-            Login
-          </button>
-        </Link>
-      </header>
+    <div className="min-h-screen w-full bg-white text-gray-900 font-sans flex flex-col justify-center">
+      {/* ✅ Hero Section */}
+      <section className="flex flex-row items-center justify-center gap-20 px-20 lg:px-28 py-16">
+        {/* Left Content */}
+        <div className="max-w-2xl">
+          <h2 className="font-extrabold leading-tight mb-8" style={{ fontSize: "4.5rem" }}>
+  Meet Your <br /> Service Bot
+</h2>
+<p className="text-gray-600 mb-10" style={{ fontSize: "1.75rem", lineHeight: "2.25rem" }}>
+  Our service bot is here to provide support and assistance
+</p>
 
-      {/* Hero Section */}
-      <section className="flex flex-col md:flex-row items-center justify-between px-8 md:px-20 py-16 gap-10">
-        
-        {/* Left side - text */}
-        <div className="md:w-1/2 text-center md:text-left space-y-6">
-          <h2 className="text-5xl font-extrabold leading-tight tracking-wide">
-            Meet <span className="text-purple-400">ButlerBot 🤖</span>
-          </h2>
-          <p className="text-lg max-w-md mx-auto md:mx-0">
-            Delivering comfort, cleanliness, and concierge service — all in one
-            smart hotel assistant.
-          </p>
+          <Link to="/login">
+  <Button />
+</Link>
+
         </div>
 
-        {/* Right side - image */}
-        <div className="md:w-1/2 flex justify-center">
+        {/* Right Image */}
+        <div className="flex justify-end">
           <img
             src="/butler-rocket.png"
-            alt="Hotel Bot"
-            className="w-[300px] md:w-[400px] drop-shadow-2xl"
+            alt="Service Bot"
+            className="w-[450px] max-w-full"
           />
         </div>
-
       </section>
     </div>
   );
 };
 
 export default Landing;
-  
