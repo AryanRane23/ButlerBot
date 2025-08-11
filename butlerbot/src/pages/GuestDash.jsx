@@ -1,70 +1,76 @@
-import React, { useState } from 'react';
-import styled from 'styled-components';
-import { FaBatteryThreeQuarters, FaMapMarkerAlt, FaUtensils, FaBroom, FaTrash } from 'react-icons/fa';
-
+import React, { useState } from "react"; 
+import styled from "styled-components";
+import {
+  FaBatteryThreeQuarters,
+  FaMapMarkerAlt,
+  FaUtensils,
+  FaBroom,
+  FaTrash,
+  FaTasks,
+} from "react-icons/fa";
 
 const GuestDash = () => {
-  const [taskName, setTaskName] = useState('');
-  const [location, setLocation] = useState('');
-
-
+  const [taskName, setTaskName] = useState("");
+  const [location, setLocation] = useState("");
   const handleSubmit = (e) => {
     e.preventDefault();
     alert(`Task: ${taskName}, Location: ${location}`);
-    setTaskName('');
-    setLocation('');
+    setTaskName("");
+    setLocation("");
   };
-
-
   return (
     <Wrapper>
       <div className="container">
-         <h2 style={{ textAlign: "center" }}>Guest Dashboard</h2>
-       
-        <p className="subtext">Welcome! Check robot status and request services.</p>
-
-
-        {/* Robot Status */}
-        <div className="card status-card">
-          <div className="status-item">
-            <FaBatteryThreeQuarters size={20} />
-            <span>85%</span>
+        <header>
+          <h1>Guest Dashboard</h1>
+          <p>Welcome! Check robot status and request services.</p>
+        </header>
+        {/* Status Cards */}
+        <div className="status-grid">
+          <div className="stat-card">
+            <FaBatteryThreeQuarters />
+            <span className="label">Battery Level</span>
+            <span className="value">85%</span>
           </div>
-          <div className="status-item">
-            <FaMapMarkerAlt size={20} />
-            <span>Lobby</span>
+          <div className="stat-card">
+            <FaMapMarkerAlt />
+            <span className="label">Location</span>
+            <span className="value">Lobby</span>
           </div>
-          <div className="status-item">
-            <FaUtensils size={20} />
-            <span>Delivering food</span>
+          <div className="stat-card">
+            <FaTasks />
+            <span className="label">Current Task</span>
+            <span className="value">Delivering Food</span>
+          </div>
+          <div className="stat-card">
+            <FaUtensils />
+            <span className="label">Robot Status</span>
+            <span className="value">Active</span>
           </div>
         </div>
-
-
-        <div className="bottom-section">
+        {/* Bottom Grid */}
+        <div className="bottom-grid">
           {/* Quick Actions */}
-          <div className="card quick-actions">
-            <h3 className="card-title">Quick Actions</h3>
+          <div className="card">
+            <h3>Quick Actions</h3>
             <div className="actions">
               <button>
-                <FaBroom size={18} />
+                <FaBroom size={20} />
                 <span>Request Cleaning</span>
               </button>
               <button>
-                <FaUtensils size={18} />
+                <FaUtensils size={20} />
                 <span>Order Food</span>
               </button>
               <button>
-                <FaTrash size={18} />
+                <FaTrash size={20} />
                 <span>Request Waste Pickup</span>
               </button>
             </div>
           </div>
-
-
-          {/* Request a Task */}
-          <div className="card request-task">
-            <h3 className="card-title">Request a Task</h3>
+          {/* Request Task */}
+          <div className="card">
+            <h3>Request a Task</h3>
             <form onSubmit={handleSubmit}>
               <input
                 type="text"
@@ -89,154 +95,149 @@ const GuestDash = () => {
   );
 };
 
-
 const Wrapper = styled.div`
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #ffe4f1, #fddde6);
+  background: linear-gradient(135deg, #f8f0f1ff, #f9bcc3ff);
+  padding: 40px;
   display: flex;
   justify-content: center;
-  padding: 60px; /* Increased padding */
-
 
   .container {
-    max-width: 1100px; /* Wider layout */
     width: 100%;
+    max-width: 1100px;
   }
 
-
-  .heading {
-    font-size: 2.2rem; /* Bigger heading */
+  header {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 2rem;
     font-weight: bold;
+    color: #0e0e0e;
+  }
+  header p {
+    color: rgba(39, 37, 37, 0.8);
   }
 
-
-  .subtext {
-    color: #555;
-    font-size: 1.1rem;
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
     margin-bottom: 30px;
   }
 
-
-  .card {
-    background: #fff;
-    border-radius: 15px;
-    box-shadow: 0 6px 25px rgba(0,0,0,0.05);
-    padding: 30px; /* Bigger card padding */
+  /* <-- Solid white stat cards --> */
+  .stat-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 22px;
+    text-align: center;
+    color: #222;
+    /* subtle border + shadow to make white pop on pink */
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 24px rgba(11, 10, 10, 0.06);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
   }
-
-
-  .status-card {
-    display: flex;
-    justify-content: space-around; /* Spread evenly */
-    align-items: center;
-    margin-bottom: 30px;
-    padding: 25px; /* Taller */
-    font-size: 1.2rem; /* Larger text */
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 34px rgba(11, 10, 10, 0.09);
   }
-
-
-  .status-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-weight: 500;
+  .stat-card svg {
+    font-size: 28px;
+    margin-bottom: 8px;
+    color: #f73864; /* accent color for the icon */
   }
-
-
-  .status-item svg {
-    font-size: 26px; /* Bigger icons */
+  .label {
+    display: block;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 6px;
   }
-
-
-  .bottom-section {
-    display: flex;
-    gap: 25px;
-    flex-wrap: wrap;
-  }
-
-
-  .quick-actions {
-    flex: 2;
-  }
-
-
-  .card-title {
-    font-size: 1.2rem;
+  .value {
+    font-size: 1.3rem;
     font-weight: bold;
-    margin-bottom: 20px;
   }
 
-
-  .actions {
-    display: flex;
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
     gap: 20px;
     flex-wrap: wrap;
   }
 
+  /* <-- Solid white main cards --> */
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    color: #201e1e;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 24px rgba(11, 10, 10, 0.06);
+  }
+  .card h3 {
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+  }
 
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
   .actions button {
     flex: 1;
-    min-width: 150px; /* Bigger buttons */
-    background: #e68299ff;
-    border: 1px solid #eee;
+    min-width: 120px;
+    padding: 15px;
+    background: #ef7b87ff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: 10px;
-    padding: 20px; /* Larger padding */
+    color: #343232;
+    font-weight: 500;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    font-weight: 500;
-    font-size: 1rem; /* Bigger text */
+    gap: 8px;
     cursor: pointer;
-    transition: 0.3s;
+    transition: 0.18s;
   }
-
-
-  .actions button svg {
-    font-size: 24px; /* Bigger icons */
-  }
-
-
   .actions button:hover {
-    background: #ffe4f1;
+    transform: translateY(-3px);
+    background: #fff7f8;
   }
 
-
-  .request-task {
-    flex: 1;
-  }
-
-
-  .request-task form {
+  form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
   }
-
-
-  .request-task input {
-    padding: 14px; /* Taller input fields */
+  input {
+    padding: 12px;
     border-radius: 8px;
-    border: 1px solid #ff6f91;
+    border: 1px solid rgba(0, 0, 0, 0.08);
     font-size: 1rem;
+    background: #e9d8d8ff;
+    color: #d0c2c2ff;
   }
-
-
-  .request-task button {
-    background: #ff8fa3;
-    color: #fff;
-    padding: 14px;
+  button[type="submit"] {
+    padding: 12px;
+    background: #f73864;
+    color: #170808ff;
     border: none;
     border-radius: 8px;
     font-weight: bold;
-    font-size: 1rem;
     cursor: pointer;
-    transition: 0.3s;
+  }
+  button[type="submit"]:hover {
+    background: #e22b52;
   }
 
-
-  .request-task button:hover {
-    background: #ff6f91;
+  /* small screen adjustments */
+  @media (max-width: 800px) {
+    .bottom-grid {
+      grid-template-columns: 1fr;
+    }
   }
 `;
+
 export default GuestDash;
