@@ -1246,7 +1246,6 @@ import {
   FaRobot,
   FaBars,
   FaSignOutAlt,
-  FaUpload,
   FaUserCircle,
   FaChevronDown,
 } from "react-icons/fa";
@@ -1256,21 +1255,12 @@ import { ref as rtdbRef, onValue, update } from "firebase/database";
 import { db, auth } from "../firebase";
 
 // Auth + Firestore for user profile
-import { onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-
-// Storage for avatar upload
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
 
 import { useNavigate } from "react-router-dom";
 
 const fs = getFirestore();
-const storage = getStorage();
 
 const Dashboard = () => {
   // ----- UI / data state -----
@@ -1279,7 +1269,7 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
 
   // Profile dropdown + edit modal (optional)
-  const [ setMenuOpen] = useState(false);
+  const [, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
   // Auth user + profile
@@ -1292,7 +1282,6 @@ const Dashboard = () => {
     photoURL: "",
   });
 
-  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
 
   // ----- Auth listener (same pattern as GuestDash) -----
@@ -1313,7 +1302,7 @@ const Dashboard = () => {
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  },);
+  }, []);
 
   // ----- Load/initialize Firestore user doc like GuestDash -----
   const ensureAndLoadUserDoc = async (u) => {
@@ -1353,34 +1342,6 @@ const Dashboard = () => {
   const updateStatus = (id, status) => {
     const requestRef = rtdbRef(db, `requests/${id}`);
     update(requestRef, { status, updatedAt: Date.now() });
-  };
-
-  // ----- Upload avatar to Storage, save to Auth + Firestore -----
-  const onPickAvatar = async (e) => {
-    if (!user) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setUploading(true);
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `users/${user.uid}/avatar_${Date.now()}.${ext}`;
-      const sref = storageRef(storage, path);
-      await uploadBytes(sref, file);
-      const url = await getDownloadURL(sref);
-
-      // Update Auth profile photo
-      await updateProfile(user, { photoURL: url });
-
-      // Update Firestore doc
-      await setDoc(doc(fs, "users", user.uid), { photoURL: url }, { merge: true });
-
-      setProfile((p) => ({ ...p, photoURL: url }));
-    } catch (err) {
-      alert("Failed to upload image: " + err.message);
-    } finally {
-      setUploading(false);
-      e.target.value = ""; // reset input
-    }
   };
 
   // ----- Logout (same pattern as GuestDash) -----
@@ -1424,16 +1385,6 @@ const Dashboard = () => {
             ) : (
               <FaUserCircle className="placeholder" />
             )}
-            <label className="upload">
-              <FaUpload />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={onPickAvatar}
-                disabled={uploading}
-              />
-              <span>{uploading ? "Uploading..." : "Upload"}</span>
-            </label>
           </div>
 
           {sidebarOpen && (
@@ -1446,8 +1397,7 @@ const Dashboard = () => {
           )}
         </ProfileSection>
 
-      
-        {/* Logout at bottom (also clickable) */}
+        {/* Logout at bottom */}
         <LogoutBtn onClick={handleSignOut}>
           <FaSignOutAlt />
           {sidebarOpen && <span>Logout</span>}
@@ -1555,12 +1505,12 @@ const Dashboard = () => {
             </ScrollArea>
           </MainCard>
         </div>
-<ActionButtons>
-  <button className="start">Start Cleaning</button>
-  <button className="deliver">Deliver Order</button>
-  <button className="stop">Emergency Stop</button>
-</ActionButtons>
 
+        <ActionButtons>
+          <button className="start">Start Cleaning</button>
+          <button className="deliver">Deliver Order</button>
+          <button className="stop">Emergency Stop</button>
+        </ActionButtons>
       </Content>
     </Wrapper>
   );
@@ -1614,35 +1564,6 @@ const Sidebar = styled.aside`
     justify-content: ${({ sidebarOpen }) => (sidebarOpen ? "flex-end" : "center")};
   }
   .toggle { font-size: 20px; cursor: pointer; }
-
-  .profile-menu { position: relative; }
-  .profile-btn {
-    width: 100%;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,.06);
-    padding: 8px 10px;
-    border-radius: 12px;
-    display: inline-flex; align-items: center; gap: 8px;
-    cursor: pointer;
-  }
-  .profile-btn img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-  .profile-btn > svg { font-size: 22px; color: #444; }
-  .profile-name { font-weight: 700; }
-  .chev { margin-left: auto; opacity: .7; }
-  .chev.open { transform: rotate(180deg); }
-
-  .dropdown {
-    position: absolute; right: 0; top: calc(100% + 8px);
-    width: 240px; background: #fff; border: 1px solid rgba(0,0,0,.06);
-    border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.14);
-    padding: 10px; z-index: 10;
-  }
-  .dropdown .row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
-  .dropdown .logout {
-    width: 100%; display: inline-flex; align-items: center; gap: 8px;
-    background: #fef2f2; color: #b00020; border: 1px solid rgba(0,0,0,.06);
-    border-radius: 10px; padding: 10px; cursor: pointer;
-  }
 `;
 
 const ProfileSection = styled.div`
@@ -1652,13 +1573,6 @@ const ProfileSection = styled.div`
   .avatar-wrap { display: grid; place-items: center; gap: 10px; }
   img { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; }
   .placeholder { font-size: 78px; color: #bbb; }
-
-  .upload {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #ef7b87; color: #fff; border-radius: 10px;
-    padding: 6px 10px; cursor: pointer; font-weight: 700; font-size: .9rem;
-  }
-  .upload input { display: none; }
 
   .info { text-align: center; }
   h3 { margin: 2px 0; font-size: 1rem; }

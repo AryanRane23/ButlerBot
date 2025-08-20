@@ -1233,7 +1233,7 @@ import {
 // ✅ Firebase
 import { ref, push, set } from "firebase/database";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-import { updateProfile, signOut, onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "../firebase"; // your firebase.js must export auth & db
 
 import { useNavigate } from "react-router-dom";
@@ -1255,7 +1255,15 @@ const GuestDash = () => {
     photoURL: "",
   });
 
+  // Local editable room input for sidebar editor
+  const [roomInput, setRoomInput] = useState("");
+
   const navigate = useNavigate();
+
+  // Keep room input in sync with profile.room
+  useEffect(() => {
+    setRoomInput(profile.room || "");
+  }, [profile.room]);
 
   // ----- auth listener -----
   useEffect(() => {
@@ -1284,6 +1292,19 @@ const GuestDash = () => {
       });
     } catch (err) {
       console.error("Failed to load guest profile:", err);
+    }
+  };
+
+  // ----- update room number from sidebar -----
+  const handleSaveRoom = async () => {
+    try {
+      if (!user) return;
+      const newRoom = roomInput?.trim() || "N/A";
+      await setDoc(doc(fs, "users", user.uid), { room: newRoom }, { merge: true });
+      setProfile((p) => ({ ...p, room: newRoom }));
+      alert("✅ Room updated");
+    } catch (err) {
+      alert("❌ Failed to update room: " + err.message);
     }
   };
 
@@ -1318,13 +1339,14 @@ const GuestDash = () => {
     }
   };
 
+  // IMPORTANT CHANGE: include the guest's room from Firestore in quick actions
   const sendQuickRequest = async (task) => {
     try {
       const requestRef = ref(db, "requests");
       const newRequest = push(requestRef);
       await set(newRequest, {
         task,
-        location: "N/A",
+        location: profile.room || "N/A", // <-- now uses the saved room
         status: "pending",
         timestamp: Date.now(),
         userId: user?.uid || null,
@@ -1359,12 +1381,26 @@ const GuestDash = () => {
           </div>
 
           {sidebarOpen && (
-            <div className="info">
-              <h3>{profile.displayName || "Guest User"}</h3>
-              <p className="email">{profile.email || "—"}</p>
-              <p>Room: {profile.room}</p>
-              <p>Status: {profile.status}</p>
-            </div>
+            <>
+              <div className="info">
+                <h3>{profile.displayName || "Guest User"}</h3>
+                <p className="email">{profile.email || "—"}</p>
+                <p>Status: {profile.status}</p>
+              </div>
+
+              {/* Small room editor added here */}
+              <div className="room-edit">
+                <input
+                  type="text"
+                  placeholder="Enter Room No."
+                  value={roomInput}
+                  onChange={(e) => setRoomInput(e.target.value)}
+                />
+                <button onClick={handleSaveRoom}>Save</button>
+              </div>
+
+              <p className="room-display">Room: <strong>{profile.room}</strong></p>
+            </>
           )}
         </ProfileSection>
 
@@ -1484,7 +1520,7 @@ const Sidebar = styled.aside`
 const ProfileSection = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 10px;
   padding: 8px 6px;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -1515,6 +1551,33 @@ const ProfileSection = styled.div`
   .email {
     font-size: 0.85rem;
     color: #666;
+  }
+
+  .room-edit {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .room-edit input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,.1);
+    background: #f7f4f4;
+  }
+  .room-edit button {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 800;
+    cursor: pointer;
+    background: #ef7b87;
+    color: #fff;
+  }
+
+  .room-display {
+    text-align: center;
+    margin: 0;
   }
 `;
 
