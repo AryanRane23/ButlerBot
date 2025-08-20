@@ -1238,108 +1238,224 @@ const ScrollArea = styled.div`
 `;
 */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-
-
 import {
   FaBatteryThreeQuarters,
   FaClipboardList,
   FaRobot,
   FaBars,
-  FaHome,
-  FaUser,
   FaSignOutAlt,
+  FaUpload,
+  FaUserCircle,
+  FaChevronDown,
 } from "react-icons/fa";
-import { db } from "../firebase";
-import { ref, onValue, update } from "firebase/database";
 
-// ================== MAIN COMPONENT ==================
+// Realtime DB (requests)
+import { ref as rtdbRef, onValue, update } from "firebase/database";
+import { db, auth } from "../firebase";
+
+// Auth + Firestore for user profile
+import { onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+// Storage for avatar upload
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
+
+import { useNavigate } from "react-router-dom";
+
+const fs = getFirestore();
+const storage = getStorage();
+
 const Dashboard = () => {
-  const batteryLevel = "85%";
-  const robotStatus = "Idle";
-
+  // ----- UI / data state -----
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Admin profile states
-  const [adminName, setAdminName] = useState("Admin User");
-  const [adminEmail, setAdminEmail] = useState("admin@example.com");
-  const [adminRoom, setAdminRoom] = useState("101");
-  const [adminStatus, setAdminStatus] = useState("Available");
-  const [adminPhoto, setAdminPhoto] = useState("/default-avatar.png");
+  // Profile dropdown + edit modal (optional)
+  const [ setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
-  // Fetch tasks
+  // Auth user + profile
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState({
+    displayName: "",
+    email: "",
+    room: "N/A",
+    status: "Admin",
+    photoURL: "",
+  });
+
+  const [uploading, setUploading] = useState(false);
+  const navigate = useNavigate();
+
+  // ----- Auth listener (same pattern as GuestDash) -----
   useEffect(() => {
-    const requestRef = ref(db, "requests");
-    onValue(requestRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const formatted = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-        }));
-        setTasks(formatted);
-        setRecentActivity(formatted.slice(-5).reverse());
-      }
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) await ensureAndLoadUserDoc(u);
     });
+    return () => unsub();
   }, []);
 
-  // Fetch admin profile
+  // ----- Click outside to close profile menu -----
   useEffect(() => {
-    const profileRef = ref(db, "adminProfile");
-    onValue(profileRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        setAdminName(data.name || "Admin User");
-        setAdminEmail(data.email || "admin@example.com");
-        setAdminRoom(data.room || "101");
-        setAdminStatus(data.status || "Available");
-        setAdminPhoto(data.photoURL || "/default-avatar.png");
+    const onDocClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
       }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  },);
+
+  // ----- Load/initialize Firestore user doc like GuestDash -----
+  const ensureAndLoadUserDoc = async (u) => {
+    try {
+      const userRef = doc(fs, "users", u.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        // create minimal doc so we can store extra fields
+        await setDoc(userRef, { room: "N/A", status: "Admin" }, { merge: true });
+      }
+      const fresh = (await getDoc(userRef)).data();
+      setProfile({
+        displayName: u.displayName || "Admin User",
+        email: u.email || "",
+        photoURL: u.photoURL || "",
+        room: fresh?.room ?? "N/A",
+        status: fresh?.status ?? "Admin",
+      });
+    } catch (err) {
+      console.error("Failed to load admin profile:", err);
+    }
+  };
+
+  // ----- Realtime DB: requests list -----
+  useEffect(() => {
+    const requestRef = rtdbRef(db, "requests");
+    const unsub = onValue(requestRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const formatted = Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+      setTasks(formatted);
+      setRecentActivity(formatted.slice(-5).reverse());
     });
+    return () => unsub();
   }, []);
 
+  // ----- Update request status -----
   const updateStatus = (id, status) => {
-    const requestRef = ref(db, `requests/${id}`);
+    const requestRef = rtdbRef(db, `requests/${id}`);
     update(requestRef, { status, updatedAt: Date.now() });
   };
+
+  // ----- Upload avatar to Storage, save to Auth + Firestore -----
+  const onPickAvatar = async (e) => {
+    if (!user) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploading(true);
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `users/${user.uid}/avatar_${Date.now()}.${ext}`;
+      const sref = storageRef(storage, path);
+      await uploadBytes(sref, file);
+      const url = await getDownloadURL(sref);
+
+      // Update Auth profile photo
+      await updateProfile(user, { photoURL: url });
+
+      // Update Firestore doc
+      await setDoc(doc(fs, "users", user.uid), { photoURL: url }, { merge: true });
+
+      setProfile((p) => ({ ...p, photoURL: url }));
+    } catch (err) {
+      alert("Failed to upload image: " + err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = ""; // reset input
+    }
+  };
+
+  // ----- Logout (same pattern as GuestDash) -----
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (err) {
+      alert("❌ Error signing out: " + err.message);
+    }
+  };
+
+  // Fallback: if not logged in
+  if (!user) {
+    return (
+      <Centered>
+        <div className="card">
+          <h2>You’re not signed in</h2>
+          <button onClick={() => navigate("/login")}>Go to Login</button>
+        </div>
+      </Centered>
+    );
+  }
+
+  const batteryLevel = "85%";
+  const robotStatus = "Idle";
 
   return (
     <Wrapper>
       {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen}>
         <div className="top">
-          <FaBars
-            className="toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          />
+          <FaBars className="toggle" onClick={() => setSidebarOpen((v) => !v)} />
         </div>
 
-        {/* Profile Section */}
+        {/* Profile Section (uses Auth + Firestore data) */}
         <ProfileSection sidebarOpen={sidebarOpen}>
-          <ProfileImage src={adminPhoto} alt="Admin" />
+          <div className="avatar-wrap">
+            {profile.photoURL ? (
+              <img src={profile.photoURL} alt="Admin" />
+            ) : (
+              <FaUserCircle className="placeholder" />
+            )}
+            <label className="upload">
+              <FaUpload />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={onPickAvatar}
+                disabled={uploading}
+              />
+              <span>{uploading ? "Uploading..." : "Upload"}</span>
+            </label>
+          </div>
+
           {sidebarOpen && (
-            <>
-              <h3>{adminName}</h3>
-              <p>{adminEmail}</p>
-              <p>Room: {adminRoom}</p>
-              <p>Status: {adminStatus}</p>
-            </>
+            <div className="info">
+              <h3>{profile.displayName || "Admin User"}</h3>
+              <p className="email">{profile.email || "—"}</p>
+              <p>Room: {profile.room}</p>
+              <p>Status: {profile.status}</p>
+            </div>
           )}
         </ProfileSection>
 
-        
-        {/* Logout Button */}
-        <LogoutBtn>
+      
+        {/* Logout at bottom (also clickable) */}
+        <LogoutBtn onClick={handleSignOut}>
           <FaSignOutAlt />
           {sidebarOpen && <span>Logout</span>}
         </LogoutBtn>
       </Sidebar>
 
-      {/* Dashboard Content */}
-      <Content sidebarOpen={sidebarOpen}>
+      {/* Content */}
+      <Content>
         <header>
           <h1>Admin Dashboard</h1>
         </header>
@@ -1389,17 +1505,13 @@ const Dashboard = () => {
                           {task.status === "pending" && (
                             <>
                               <button
-                                onClick={() =>
-                                  updateStatus(task.id, "in-progress")
-                                }
+                                onClick={() => updateStatus(task.id, "in-progress")}
                                 className="btn-action"
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() =>
-                                  updateStatus(task.id, "assigned")
-                                }
+                                onClick={() => updateStatus(task.id, "assigned")}
                                 className="btn-assign"
                               >
                                 Assign to Robot
@@ -1408,9 +1520,7 @@ const Dashboard = () => {
                           )}
                           {task.status === "in-progress" && (
                             <button
-                              onClick={() =>
-                                updateStatus(task.id, "completed")
-                              }
+                              onClick={() => updateStatus(task.id, "completed")}
                               className="btn-complete"
                             >
                               Done
@@ -1435,9 +1545,7 @@ const Dashboard = () => {
                   <li key={item.id}>
                     <strong>
                       [
-                      {new Date(
-                        item.updatedAt || item.timestamp
-                      ).toLocaleTimeString()}
+                      {new Date(item.updatedAt || item.timestamp || Date.now()).toLocaleTimeString()}
                       ]
                     </strong>{" "}
                     {item.task} → {item.location} ({item.status})
@@ -1447,12 +1555,12 @@ const Dashboard = () => {
             </ScrollArea>
           </MainCard>
         </div>
+<ActionButtons>
+  <button className="start">Start Cleaning</button>
+  <button className="deliver">Deliver Order</button>
+  <button className="stop">Emergency Stop</button>
+</ActionButtons>
 
-        <div className="action-buttons">
-          <button className="start">Start Cleaning</button>
-          <button className="deliver">Deliver Order</button>
-          <button className="stop">Emergency Stop</button>
-        </div>
       </Content>
     </Wrapper>
   );
@@ -1460,300 +1568,196 @@ const Dashboard = () => {
 
 export default Dashboard;
 
-// ================== STYLES ==================
+/* ===================== STYLES ===================== */
+const Centered = styled.div`
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #fde2e4, #f9bcc3);
+  .card {
+    background: #fff;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    text-align: center;
+  }
+  button {
+    margin-top: 10px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    background: #f73864;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+  }
+`;
+
 const Wrapper = styled.div`
   display: flex;
   min-height: 100vh;
   background: linear-gradient(135deg, #fde2e4, #f9bcc3);
 `;
 
-const Sidebar = styled.div`
-  background: #1e1e2f;
-  color: white;
-  width: ${(props) => (props.sidebarOpen ? "240px" : "70px")};
-  transition: width 0.3s ease-in-out;
+const Sidebar = styled.aside`
+  width: ${({ sidebarOpen }) => (sidebarOpen ? "260px" : "80px")};
+  background: #ffffff;
+  border-right: 1px solid rgba(0,0,0,.08);
+  padding: 16px;
+  transition: width .25s ease;
   display: flex;
   flex-direction: column;
-  padding: 15px 10px;
-  justify-content: space-between;
+  gap: 14px;
 
   .top {
     display: flex;
-    justify-content: ${(props) =>
-      props.sidebarOpen ? "flex-end" : "center"};
-    margin-bottom: 20px;
-
-    .toggle {
-      font-size: 22px;
-      cursor: pointer;
-    }
+    justify-content: ${({ sidebarOpen }) => (sidebarOpen ? "flex-end" : "center")};
   }
+  .toggle { font-size: 20px; cursor: pointer; }
 
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  .profile-menu { position: relative; }
+  .profile-btn {
+    width: 100%;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 8px 10px;
+    border-radius: 12px;
+    display: inline-flex; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+  .profile-btn img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+  .profile-btn > svg { font-size: 22px; color: #444; }
+  .profile-name { font-weight: 700; }
+  .chev { margin-left: auto; opacity: .7; }
+  .chev.open { transform: rotate(180deg); }
 
-    li {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.2s;
-
-      &:hover {
-        background: #2a2a40;
-      }
-
-      svg {
-        font-size: 18px;
-      }
-
-      span {
-        font-size: 14px;
-        white-space: nowrap;
-      }
-    }
+  .dropdown {
+    position: absolute; right: 0; top: calc(100% + 8px);
+    width: 240px; background: #fff; border: 1px solid rgba(0,0,0,.06);
+    border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    padding: 10px; z-index: 10;
+  }
+  .dropdown .row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+  .dropdown .logout {
+    width: 100%; display: inline-flex; align-items: center; gap: 8px;
+    background: #fef2f2; color: #b00020; border: 1px solid rgba(0,0,0,.06);
+    border-radius: 10px; padding: 10px; cursor: pointer;
   }
 `;
 
 const ProfileSection = styled.div`
-  text-align: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  transition: all 0.3s ease-in-out;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 8px 6px; border: 1px solid rgba(0,0,0,.06); border-radius: 14px;
 
-  img {
-    border-radius: 50%;
-    margin-bottom: 10px;
-  }
+  .avatar-wrap { display: grid; place-items: center; gap: 10px; }
+  img { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; }
+  .placeholder { font-size: 78px; color: #bbb; }
 
-  h3 {
-    margin: 5px 0;
-    font-size: 1rem;
+  .upload {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #ef7b87; color: #fff; border-radius: 10px;
+    padding: 6px 10px; cursor: pointer; font-weight: 700; font-size: .9rem;
   }
+  .upload input { display: none; }
 
-  p {
-    font-size: 0.85rem;
-    opacity: 0.8;
-    margin: 2px 0;
-  }
+  .info { text-align: center; }
+  h3 { margin: 2px 0; font-size: 1rem; }
+  .email { font-size: .85rem; color: #666; }
 `;
 
-const ProfileImage = styled.img`
-  width: 70px;
-  height: 70px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #fff;
-`;
-
-const LogoutBtn = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.2s;
+const LogoutBtn = styled.button`
   margin-top: auto;
-
-  &:hover {
-    background: #2a2a40;
-  }
-
-  svg {
-    font-size: 18px;
-  }
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: #f25d80; color: #fff; border: none; padding: 10px 12px;
+  border-radius: 10px; cursor: pointer; font-weight: 800;
+  &:hover { opacity: .9; }
 `;
 
-const Content = styled.div`
+const Content = styled.main`
   flex: 1;
-  padding: 30px;
-  overflow-x: hidden;
+  padding: 28px;
 
-  header {
-    text-align: center;
-    margin-bottom: 25px;
-  }
-
-  header h1 {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #222;
-  }
+  header { text-align: center; margin-bottom: 22px; }
+  header h1 { font-size: 2rem; font-weight: 800; color: #1f1f1f; }
 
   .status-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 18px; margin-bottom: 20px;
   }
 
   .main-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
+    gap: 20px; margin-bottom: 20px;
   }
+  @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
 
-  .action-buttons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
+  .btn-action { background: #007bff; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-right: 6px; }
+  .btn-assign { background: #ff9800; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .btn-complete { background: #28a745; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .robot-label { font-weight: 700; color: #555; }
+`;
 
-  .action-buttons button {
+const StatusCard = styled.div`
+  background: #fff; border-radius: 14px; padding: 18px; text-align: center;
+  border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 20px rgba(0,0,0,.06);
+  svg { font-size: 26px; color: #f73864; margin-bottom: 8px; }
+  .label { display: block; font-size: .9rem; opacity: .75; }
+  .value { font-size: 1.3rem; font-weight: 800; }
+`;
+
+const MainCard = styled.div`
+  background: #fff; border-radius: 16px; padding: 18px;
+  border: 1px solid rgba(0,0,0,.06); box-shadow: 0 12px 28px rgba(0,0,0,.1);
+  h3 { margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  .activity-list { list-style: none; padding: 0; margin: 0; }
+  .activity-list li { margin-bottom: 8px; }
+`;
+
+const ScrollArea = styled.div`
+  max-height: 260px; overflow-y: auto; padding-right: 6px;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
+  &::-webkit-scrollbar-thumb:hover { background: #999; }
+  &::-webkit-scrollbar-track { background: transparent; }
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 20px;
+
+  button {
     padding: 12px 25px;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: bold;
     font-size: 1rem;
     cursor: pointer;
     color: white;
+    transition: all 0.2s ease-in-out;
   }
 
-  .start,
-  .deliver,
+  .start {
+    background: #fc516bff; 
+  }
+
+  .deliver {
+    background: #fc516bff; 
+  }
+
   .stop {
-    background-color: #f25d80;
+    background: #fc516bff; 
   }
 
-  .action-buttons button:hover {
+  button:hover {
+    transform: scale(1.05);
     opacity: 0.9;
-  }
-
-  .btn-action {
-    background: #007bff;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    margin-right: 5px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .btn-assign {
-    background: #ff9800;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .btn-complete {
-    background: #28a745;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-
-  .robot-label {
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: #555;
-  }
-`;
-
-const StatusCard = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-
-  svg {
-    font-size: 28px;
-    color: #f73864;
-    margin-bottom: 8px;
-  }
-
-  .label {
-    display: block;
-    font-size: 0.85rem;
-    opacity: 0.7;
-  }
-
-  .value {
-    font-size: 1.4rem;
-    font-weight: bold;
-  }
-`;
-
-const MainCard = styled.div`
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-
-  h3 {
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-    font-weight: 700;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  th,
-  td {
-    text-align: left;
-    padding: 8px;
-  }
-
-  th {
-    font-weight: bold;
-    opacity: 0.8;
-  }
-
-  tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-
-  .activity-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .activity-list li {
-    margin-bottom: 8px;
-    font-size: 0.95rem;
-  }
-`;
-
-const ScrollArea = styled.div`
-  max-height: 250px;
-  overflow-y: auto;
-  padding-right: 6px;
-
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #bbb;
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: #999;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
   }
 `;
