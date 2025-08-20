@@ -1238,7 +1238,7 @@ const ScrollArea = styled.div`
 `;
 */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import {
   FaBatteryThreeQuarters,
@@ -1247,44 +1247,34 @@ import {
   FaBars,
   FaSignOutAlt,
   FaUserCircle,
-  FaChevronDown,
 } from "react-icons/fa";
 
-// Realtime DB (requests)
+// Firebase imports
 import { ref as rtdbRef, onValue, update } from "firebase/database";
 import { db, auth } from "../firebase";
-
-// Auth + Firestore for user profile
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
-
 import { useNavigate } from "react-router-dom";
 
 const fs = getFirestore();
 
 const Dashboard = () => {
-  // ----- UI / data state -----
+  // UI + Data state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-
-  // Profile dropdown + edit modal (optional)
-  const [, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
 
   // Auth user + profile
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState({
     displayName: "",
     email: "",
-    room: "N/A",
-    status: "Admin",
     photoURL: "",
   });
 
   const navigate = useNavigate();
 
-  // ----- Auth listener (same pattern as GuestDash) -----
+  // ----- Auth listener -----
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
@@ -1293,33 +1283,18 @@ const Dashboard = () => {
     return () => unsub();
   }, []);
 
-  // ----- Click outside to close profile menu -----
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
-  // ----- Load/initialize Firestore user doc like GuestDash -----
+  // ----- Load/initialize Firestore user doc -----
   const ensureAndLoadUserDoc = async (u) => {
     try {
       const userRef = doc(fs, "users", u.uid);
       const snap = await getDoc(userRef);
       if (!snap.exists()) {
-        // create minimal doc so we can store extra fields
-        await setDoc(userRef, { room: "N/A", status: "Admin" }, { merge: true });
+        await setDoc(userRef, { status: "Admin" }, { merge: true });
       }
-      const fresh = (await getDoc(userRef)).data();
       setProfile({
         displayName: u.displayName || "Admin User",
         email: u.email || "",
         photoURL: u.photoURL || "",
-        room: fresh?.room ?? "N/A",
-        status: fresh?.status ?? "Admin",
       });
     } catch (err) {
       console.error("Failed to load admin profile:", err);
@@ -1331,7 +1306,10 @@ const Dashboard = () => {
     const requestRef = rtdbRef(db, "requests");
     const unsub = onValue(requestRef, (snapshot) => {
       const data = snapshot.val() || {};
-      const formatted = Object.keys(data).map((key) => ({ id: key, ...data[key] }));
+      const formatted = Object.keys(data).map((key) => ({
+        id: key,
+        ...data[key],
+      }));
       setTasks(formatted);
       setRecentActivity(formatted.slice(-5).reverse());
     });
@@ -1344,7 +1322,7 @@ const Dashboard = () => {
     update(requestRef, { status, updatedAt: Date.now() });
   };
 
-  // ----- Logout (same pattern as GuestDash) -----
+  // ----- Logout -----
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -1374,10 +1352,13 @@ const Dashboard = () => {
       {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen}>
         <div className="top">
-          <FaBars className="toggle" onClick={() => setSidebarOpen((v) => !v)} />
+          <FaBars
+            className="toggle"
+            onClick={() => setSidebarOpen((v) => !v)}
+          />
         </div>
 
-        {/* Profile Section (uses Auth + Firestore data) */}
+        {/* Profile Section */}
         <ProfileSection sidebarOpen={sidebarOpen}>
           <div className="avatar-wrap">
             {profile.photoURL ? (
@@ -1391,16 +1372,14 @@ const Dashboard = () => {
             <div className="info">
               <h3>{profile.displayName || "Admin User"}</h3>
               <p className="email">{profile.email || "—"}</p>
-              <p>Room: {profile.room}</p>
-              <p>Status: {profile.status}</p>
+              <p>Status: Admin</p>
             </div>
           )}
         </ProfileSection>
 
         {/* Logout at bottom */}
         <LogoutBtn onClick={handleSignOut}>
-          <FaSignOutAlt />
-          {sidebarOpen && <span>Logout</span>}
+          <FaSignOutAlt /> {sidebarOpen && <span>Logout</span>}
         </LogoutBtn>
       </Sidebar>
 
@@ -1431,6 +1410,7 @@ const Dashboard = () => {
         </div>
 
         <div className="main-grid">
+          {/* Pending Tasks */}
           <MainCard>
             <h3>Pending Tasks</h3>
             <ScrollArea>
@@ -1455,13 +1435,17 @@ const Dashboard = () => {
                           {task.status === "pending" && (
                             <>
                               <button
-                                onClick={() => updateStatus(task.id, "in-progress")}
+                                onClick={() =>
+                                  updateStatus(task.id, "in-progress")
+                                }
                                 className="btn-action"
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() => updateStatus(task.id, "assigned")}
+                                onClick={() =>
+                                  updateStatus(task.id, "assigned")
+                                }
                                 className="btn-assign"
                               >
                                 Assign to Robot
@@ -1470,7 +1454,9 @@ const Dashboard = () => {
                           )}
                           {task.status === "in-progress" && (
                             <button
-                              onClick={() => updateStatus(task.id, "completed")}
+                              onClick={() =>
+                                updateStatus(task.id, "completed")
+                              }
                               className="btn-complete"
                             >
                               Done
@@ -1487,25 +1473,39 @@ const Dashboard = () => {
             </ScrollArea>
           </MainCard>
 
+          {/* Recent Activity */}
           <MainCard>
             <h3>Recent Activity</h3>
             <ScrollArea>
-              <ul className="activity-list">
-                {recentActivity.map((item) => (
-                  <li key={item.id}>
-                    <strong>
-                      [
-                      {new Date(item.updatedAt || item.timestamp || Date.now()).toLocaleTimeString()}
-                      ]
-                    </strong>{" "}
-                    {item.task} → {item.location} ({item.status})
-                  </li>
-                ))}
-              </ul>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Task</th>
+                    <th>Room</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentActivity.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        {new Date(
+                          item.updatedAt || item.timestamp || Date.now()
+                        ).toLocaleTimeString()}
+                      </td>
+                      <td>{item.task}</td>
+                      <td>{item.location}</td>
+                      <td>{item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </ScrollArea>
           </MainCard>
         </div>
 
+        {/* Action Buttons */}
         <ActionButtons>
           <button className="start">Start Cleaning</button>
           <button className="deliver">Deliver Order</button>
@@ -1528,7 +1528,7 @@ const Centered = styled.div`
     background: #fff;
     padding: 24px;
     border-radius: 16px;
-    box-shadow: 0 10px 26px rgba(0,0,0,.08);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.08);
     text-align: center;
   }
   button {
@@ -1552,92 +1552,200 @@ const Wrapper = styled.div`
 const Sidebar = styled.aside`
   width: ${({ sidebarOpen }) => (sidebarOpen ? "260px" : "80px")};
   background: #ffffff;
-  border-right: 1px solid rgba(0,0,0,.08);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
   padding: 16px;
-  transition: width .25s ease;
+  transition: width 0.25s ease;
   display: flex;
   flex-direction: column;
   gap: 14px;
-
   .top {
     display: flex;
-    justify-content: ${({ sidebarOpen }) => (sidebarOpen ? "flex-end" : "center")};
+    justify-content: ${({ sidebarOpen }) =>
+      sidebarOpen ? "flex-end" : "center"};
   }
-  .toggle { font-size: 20px; cursor: pointer; }
+  .toggle {
+    font-size: 20px;
+    cursor: pointer;
+  }
 `;
 
 const ProfileSection = styled.div`
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  padding: 8px 6px; border: 1px solid rgba(0,0,0,.06); border-radius: 14px;
-
-  .avatar-wrap { display: grid; place-items: center; gap: 10px; }
-  img { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; }
-  .placeholder { font-size: 78px; color: #bbb; }
-
-  .info { text-align: center; }
-  h3 { margin: 2px 0; font-size: 1rem; }
-  .email { font-size: .85rem; color: #666; }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  .avatar-wrap {
+    display: grid;
+    place-items: center;
+    gap: 10px;
+  }
+  img {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .placeholder {
+    font-size: 78px;
+    color: #bbb;
+  }
+  .info {
+    text-align: center;
+  }
+  h3 {
+    margin: 2px 0;
+    font-size: 1rem;
+  }
+  .email {
+    font-size: 0.85rem;
+    color: #666;
+  }
 `;
 
 const LogoutBtn = styled.button`
   margin-top: auto;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: #f25d80; color: #fff; border: none; padding: 10px 12px;
-  border-radius: 10px; cursor: pointer; font-weight: 800;
-  &:hover { opacity: .9; }
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f25d80;
+  color: #fff;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 800;
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 const Content = styled.main`
   flex: 1;
   padding: 28px;
-
-  header { text-align: center; margin-bottom: 22px; }
-  header h1 { font-size: 2rem; font-weight: 800; color: #1f1f1f; }
-
+  header {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1f1f1f;
+  }
   .status-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 18px; margin-bottom: 20px;
+    gap: 18px;
+    margin-bottom: 20px;
   }
-
   .main-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px; margin-bottom: 20px;
+    gap: 20px;
+    margin-bottom: 20px;
   }
-  @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
-
-  .btn-action { background: #007bff; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; margin-right: 6px; }
-  .btn-assign { background: #ff9800; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-  .btn-complete { background: #28a745; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-  .robot-label { font-weight: 700; color: #555; }
+  @media (max-width: 900px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .btn-action {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-right: 6px;
+  }
+  .btn-assign {
+    background: #ff9800;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn-complete {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .robot-label {
+    font-weight: 700;
+    color: #555;
+  }
 `;
 
 const StatusCard = styled.div`
-  background: #fff; border-radius: 14px; padding: 18px; text-align: center;
-  border: 1px solid rgba(0,0,0,.06); box-shadow: 0 10px 20px rgba(0,0,0,.06);
-  svg { font-size: 26px; color: #f73864; margin-bottom: 8px; }
-  .label { display: block; font-size: .9rem; opacity: .75; }
-  .value { font-size: 1.3rem; font-weight: 800; }
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+  svg {
+    font-size: 26px;
+    color: #f73864;
+    margin-bottom: 8px;
+  }
+  .label {
+    display: block;
+    font-size: 0.9rem;
+    opacity: 0.75;
+  }
+  .value {
+    font-size: 1.3rem;
+    font-weight: 800;
+  }
 `;
 
 const MainCard = styled.div`
-  background: #fff; border-radius: 16px; padding: 18px;
-  border: 1px solid rgba(0,0,0,.06); box-shadow: 0 12px 28px rgba(0,0,0,.1);
-  h3 { margin-bottom: 12px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px; }
-  tbody tr:nth-child(even) { background: #fafafa; }
-  .activity-list { list-style: none; padding: 0; margin: 0; }
-  .activity-list li { margin-bottom: 8px; }
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+  h3 {
+    margin-bottom: 12px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: 8px;
+  }
+  tbody tr:nth-child(even) {
+    background: #fafafa;
+  }
 `;
 
 const ScrollArea = styled.div`
-  max-height: 260px; overflow-y: auto; padding-right: 6px;
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
-  &::-webkit-scrollbar-thumb:hover { background: #999; }
-  &::-webkit-scrollbar-track { background: transparent; }
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #999;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 `;
 
 const ActionButtons = styled.div`
@@ -1646,7 +1754,6 @@ const ActionButtons = styled.div`
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 20px;
-
   button {
     padding: 12px 25px;
     border: none;
@@ -1657,19 +1764,15 @@ const ActionButtons = styled.div`
     color: white;
     transition: all 0.2s ease-in-out;
   }
-
   .start {
-    background: #fc516bff; 
+    background: #fc516bff;
   }
-
   .deliver {
-    background: #fc516bff; 
+    background: #fc516bff;
   }
-
   .stop {
-    background: #fc516bff; 
+    background: #fc516bff;
   }
-
   button:hover {
     transform: scale(1.05);
     opacity: 0.9;
