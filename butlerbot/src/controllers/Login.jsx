@@ -1,4 +1,4 @@
-
+/*
 
 import React, { useState } from "react";
 import styled from "styled-components";
@@ -133,7 +133,7 @@ const StyledWrapper = styled.div`
   align-items: center;
   justify-content: center;
 
-  /* Match landing page gradient */
+  
   background: linear-gradient(90deg, #f1f3f6ff 0%, #f9a8d4 100%);
   background-size: cover;
 
@@ -149,7 +149,7 @@ const StyledWrapper = styled.div`
     text-align: center;
     font-size: 1.5rem;
     font-weight: 700;
-    color: black; /* ✅ Make it visible */
+    color: black; 
   }
 
   .form {
@@ -168,7 +168,7 @@ const StyledWrapper = styled.div`
 
   .input-group label {
     color: #3b3a3aff;
-    margin-bottom: 6px; /* more space between label and input */
+    margin-bottom: 6px; 
     font-size: 0.875rem;
   }
 
@@ -177,7 +177,7 @@ const StyledWrapper = styled.div`
     border-radius: 0.375rem;
     border: 1px solid rgba(2, 6, 17, 1);
     background-color: rgba(200, 200, 241, 1);
-    padding: 0.85rem 0.2rem; /* more padding inside */
+    padding: 0.85rem 0.2rem;
     color: #111;
     outline: none;
   }
@@ -269,3 +269,284 @@ const StyledWrapper = styled.div`
 }
 
 `;
+*/
+// LoginPage.jsx
+// LoginPage.jsx
+// LoginPage.jsx
+import React, { useState } from "react";
+import styled from "styled-components";
+import { FaUser, FaLock } from "react-icons/fa";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faGoogle } from "@fortawesome/free-brands-svg-icons";
+import { Link, useNavigate } from "react-router-dom";
+import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
+import { auth, provider } from "../firebase";
+
+const Container = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ffffff, #ff7b92);
+  padding: 20px;
+`;
+
+const Card = styled.div`
+  display: flex;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  overflow: hidden;
+  width: 850px;
+  max-width: 100%;
+`;
+
+const Left = styled.div`
+  flex: 1;
+  background: #fdfdfd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+`;
+
+const Right = styled.div`
+  flex: 1;
+  padding: 50px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+`;
+
+const Title = styled.h2`
+  margin-bottom: 30px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #222;
+`;
+
+const InputWrapper = styled.div`
+  position: relative;
+  margin-bottom: 18px;
+
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: #666;
+  }
+
+  input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid #141010ff;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+
+    &:focus {
+      border-color: #3f51b5;
+    }
+  }
+`;
+
+const CheckboxWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 22px;
+
+  input {
+    margin-right: 8px;
+  }
+`;
+
+const Button = styled.button`
+  width: 100%;
+  padding: 14px;
+  background: #3f51b5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:hover {
+    background: #2c3e99;
+  }
+`;
+
+const CreateAccount = styled.div`
+  display: block;
+  margin-top: 20px;
+  text-align: center;
+  font-size: 15px;
+  color: #3f51b5;
+
+  a {
+    color: #3f51b5;
+    font-weight: bold;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+`;
+
+const SocialLogin = styled.div`
+  margin-top: 25px;
+  text-align: center;
+
+  span {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #555;
+  }
+
+  .icons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+
+    button {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      border: none;
+      cursor: pointer;
+      background: #db4437; /* Google red */
+    }
+
+    button:hover {
+      background: #c1351d;
+    }
+  }
+`;
+
+const LoginPage = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userEmail = userCredential.user.email;
+      const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
+      localStorage.setItem("role", role);
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem("token", token);
+
+      alert(`✅ Logged in as ${role}`);
+      navigate(role === "admin" ? "/admin" : "/guest");
+    } catch (error) {
+      console.error("Firebase login error:", error.code, error.message);
+      alert("❌ Invalid email or password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const token = await result.user.getIdToken();
+      const userEmail = result.user.email;
+      const role = userEmail.endsWith("@admin.com") ? "admin" : "guest";
+      localStorage.setItem("role", role);
+      localStorage.setItem("token", token);
+      alert(`✅ Logged in as ${role}`);
+      navigate(role === "admin" ? "/admin" : "/guest");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Google login failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Container>
+      <Card>
+        <Left>
+          <img 
+            src="/undraw_designer-avatar_n5q8.png" 
+            alt="Login Illustration" 
+          />
+        </Left>
+        <Right>
+          <Title>Log In</Title>
+
+          <form onSubmit={handleEmailLogin}>
+            <InputWrapper>
+              <FaUser />
+              <input 
+                type="email" 
+                placeholder="Enter email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </InputWrapper>
+
+            <InputWrapper>
+              <FaLock />
+              <input 
+                type="password" 
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </InputWrapper>
+
+            <CheckboxWrapper>
+              <input type="checkbox" id="remember" />
+              <label htmlFor="remember">Remember me</label>
+            </CheckboxWrapper>
+
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Loading..." : "Log In"}
+            </Button>
+          </form>
+
+          <CreateAccount>
+            Don't have an account? <Link to="/signup">Create one</Link>
+          </CreateAccount>
+
+          <SocialLogin>
+            <span>Or login with</span>
+            <div className="icons">
+              <button onClick={handleGoogleLogin} disabled={isLoading}>
+                {isLoading ? "..." : <FontAwesomeIcon icon={faGoogle} />}
+              </button>
+            </div>
+          </SocialLogin>
+        </Right>
+      </Card>
+    </Container>
+  );
+};
+
+export default LoginPage;
